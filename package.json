@@ -9,7 +9,7 @@
     "minify:js": "minify script.js > dist/script.js",
     "minify:css": "minify styles.css > dist/styles.css",
     "minify:html": "minify index.html > dist/index.html",
-    "minify": "npm run minify:js && npm run minify:css && npm run minify:html",
+    "minify": "npm run minify:js && npm run minify:css",
     "build": "npm run build:setup && npm run minify"
   },
   "author": "mostafa",
