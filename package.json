@@ -4,11 +4,16 @@
   "description": "",
   "main": "router.js",
   "scripts": {
-    "dev": "lite-server"
+    "dev": "lite-server",
+    "build:setup": "node buildSetup.js",
+    "minify:js": "minify script.js > dist/script.js",
+    "minify:css": "minify styles.css > dist/styles.css",
+    "build": "npm run build:setup && npm run minify:js && npm run minify:css"
   },
   "author": "mostafa",
   "license": "MIT",
-  "dependencies": {
-    "lite-server": "^2.6.1"
+  "devDependencies": {
+    "lite-server": "^2.6.1",
+    "minify": "^6.0.1"
   }
 }
