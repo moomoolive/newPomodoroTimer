@@ -803,8 +803,9 @@ function timerRender(app, view, createViewEvent, routerEvents) {
     view.addEventListener(localState.eventNames.createStopAudioPopup, function() {
         var stopAudioPopupContainerLayer = app.globalMethods.createDOMElement("div", "stop-audio-popup-container-layer")
         var stopAudioPopupContainer = app.globalMethods.createDOMElement("div", "stop-audio-popup-container")
+        var text = "Session Finished"
         var stopAudioText = window.document.createElement("div")
-        stopAudioText.innerText = "Sesssion Finished!"
+        stopAudioText.innerText = text
         var clockIcon = app.globalMethods.createIcon("fa fa-clock", "stop-audio-icon")
         var stopAudioButton = app.globalMethods.createDOMElement("button", "stop-audio-button")
         stopAudioButton.innerText = "Okay"
@@ -818,6 +819,7 @@ function timerRender(app, view, createViewEvent, routerEvents) {
         stopAudioPopupContainer.appendChild(stopAudioButton)
         stopAudioPopupContainerLayer.appendChild(stopAudioPopupContainer)
         view.appendChild(stopAudioPopupContainerLayer)
+        document.title = text
     })
 
     return [
