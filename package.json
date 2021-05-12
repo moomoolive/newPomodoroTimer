@@ -1,0 +1,14 @@
+{
+  "name": "newpomodortimer",
+  "version": "1.0.0",
+  "description": "",
+  "main": "router.js",
+  "scripts": {
+    "dev": "lite-server"
+  },
+  "author": "mostafa",
+  "license": "MIT",
+  "dependencies": {
+    "lite-server": "^2.6.1"
+  }
+}
