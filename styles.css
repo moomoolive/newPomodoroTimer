@@ -29,6 +29,44 @@ a:hover {
     transition: max-height 2.8s ease-in-out;
 }
 
+.stop-audio-popup-container-layer {
+    height: 100vh;
+    width: 100vw;
+    top: 0;
+    left: 0;
+    position: fixed;
+    z-index: 6;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.stop-audio-popup-container {
+    background: #98a8ae;
+    padding: 30px 30px 25px 30px;
+    border-radius: 4px;
+    font-weight: bold;
+    box-shadow: rgba(0, 0, 0, 0.35) 0px 5px 15px;
+}
+
+.stop-audio-icon {
+    font-size: 40px;
+    color: #1C7C54;
+    margin-bottom: 20px;
+}
+
+.stop-audio-button {
+    box-shadow: rgba(0, 0, 0, 0.12) 0px 1px 3px, rgba(0, 0, 0, 0.24) 0px 1px 2px;
+    background: #1C7C54;
+    padding-top: 7px;
+    padding-bottom: 7px;
+    margin-top: 20px;
+    font-size: 18px;
+    width: 100%;
+    border-radius: 4px;
+}
+
 @keyframes gradually-become-visible {
     0%   { opacity: 0; }
     20%  { opacity: 0.2; }

@@ -40,6 +40,21 @@ function createApp() {
             return setState(targetKey, state[targetKey] - 1)
         }
     }
+    function createDOMElement(type, classList) {
+        var element = window.document.createElement(type)
+        if (typeof classList !== 'string') {
+            classList = ""
+        }
+        element.className += classList
+        return element
+    }
+    function createIcon(iconClass, additionalClasses) {
+        var classes = iconClass
+        if (typeof additionalClasses === 'string') {
+            classes = classes + " " + additionalClasses
+        }
+        return createDOMElement("i", classes)
+    }
 
     return {
         append: function(element) {
@@ -50,6 +65,25 @@ function createApp() {
         },
         getTitle() {
             return title
+        },
+        renderFooter() {
+            var footerContainer = createDOMElement("div", "footer")
+            footerContainer.setAttribute("id", "footer")
+
+            var toSourceCodeLink = createDOMElement("a", "footer-text")
+            toSourceCodeLink.setAttribute("href", "https://github.com/moomoolive/newPomodoroTimer")
+            toSourceCodeLink.setAttribute("target", "_blank")
+
+            var repositoryIcon = createIcon("fab fa-github-alt", "footer-icon")
+            var sourceLinkText = window.document.createElement("span")
+            sourceLinkText.innerText = "Source Code"
+
+            toSourceCodeLink.appendChild(repositoryIcon)
+            toSourceCodeLink.appendChild(sourceLinkText)
+
+            footerContainer.appendChild(toSourceCodeLink)
+
+            window.document.body.appendChild(footerContainer)
         },
         getState(key) {
             return state[key] || null
@@ -96,17 +130,28 @@ function createApp() {
         },
         toggleFullPageAnimation() {
             return app.classList.toggle("animate-route")
+        },
+        globalMethods: {
+            createDOMElement: createDOMElement, 
+            createWindowEvent: function(eventName) {
+                var event = window.document.createEvent("Event")
+                event.initEvent(eventName, true, true)
+                return window.dispatchEvent(event)
+            },
+            createIcon: createIcon
         }
     }
 }
 
-function createWindowEvent(eventName) {
-    var event = window.document.createEvent("Event")
-    event.initEvent(eventName, true, true)
-    return window.dispatchEvent(event)
-}
-
 function createRouter(routes, app) {
+
+    var routerEventSignature = "router-"
+    var routerEvents = {
+        toTimer: routerEventSignature + "to-timer",
+        toHome: routerEventSignature + "to-home",
+        routeChange: routerEventSignature + "-change"
+    }
+
     function getRoute(pathName) {
         // "*" stands for 404 page
         return routes[pathName] || routes["*"]
@@ -114,15 +159,29 @@ function createRouter(routes, app) {
     function getCurrentRoute() {
         return getRoute(window.location.pathname)
     }
-    
+    function createView() {
+        return app.globalMethods.createDOMElement("div", "view-container")
+    }
+    function createViewEvent(view) {
+        return function(eventName) {
+            var event = window.document.createEvent("Event")
+            event.initEvent(eventName, true, true)
+            return view.dispatchEvent(event)
+        }
+    }
+
     return {
         renderRoute: function() {
             var route = getCurrentRoute()
             // injects app into every view so that it can have
             // access to the app's state (aka global state)
             // I did this to avoid mutating the "window" object
-            var renderedRoute = route.render(app)
-            app.append(renderedRoute)
+            var view = createView()
+            var renderedViewComponents = route.render(app, view, createViewEvent(view), routerEvents)
+            for (var component of renderedViewComponents) {
+                view.appendChild(component)
+            }
+            app.append(view)
             return app.toggleFullPageAnimation()
         },
         pushToRoute(pathName) {
@@ -133,187 +192,152 @@ function createRouter(routes, app) {
             return window.setTimeout(function() {
                 app.clearAllChildren()
                 window.history.pushState(null, app.getTitle(), pathName)
-                return createWindowEvent('router-change')
+                return app.globalMethods.createWindowEvent(routerEvents.routeChange)
             }, milliseconds)
+        },
+        eventNames: routerEvents
+    }
+}
+
+function homeRender(app, _, _, routerEvents) {
+    var localState = {
+        timerOptions: [
+            { 
+                title: "Break Session", 
+                targetStateKey: "breakSessionMinutes",
+                incrementFunction: app.incrementBreakSession,
+                decrementFunction: app.decrementBreakSession
+            },
+            { 
+                title: "Work Session", 
+                targetStateKey: "workSessionMinutes",
+                incrementFunction: app.incrementWorkSession,
+                decrementFunction: app.decrementWorkSession
+            },
+            { 
+                title: "Long Break", 
+                targetStateKey: "longBreakMinutes",
+                incrementFunction: app.incrementLongBreak,
+                decrementFunction: app.decrementLongBreak
+            },
+            { 
+                title: "Long Break After", 
+                incrementType: "sessions", 
+                targetStateKey: "sessionsUntilLongBreak",
+                incrementFunction: app.incrementWorkSessions,
+                decrementFunction: app.decrementWorkSessions 
+            },
+        ]
+    }
+    var methods = {
+        createIncrementButtonIcon: function(isDecrementing) {
+            var iconSuffix = isDecrementing ? "minus" : "plus"
+            var iconName = "fas fa-" + iconSuffix
+            return app.globalMethods.createIcon(iconName)
         }
     }
-}
-
-var routerEventSignature = "router-"
-var routerEvents = {
-    toTimer: routerEventSignature + "to-timer",
-    toHome: routerEventSignature + "to-home"
-}
-
-function createDOMElement(type, classList) {
-    var element = window.document.createElement(type)
-    if (typeof classList !== 'string') {
-        classList = ""
-    }
-    element.className += classList
-    return element
-}
-
-function createIcon(iconClass, additionalClasses) {
-    var classes = iconClass
-    if (typeof additionalClasses === 'string') {
-        classes = classes + " " + additionalClasses
-    }
-    return createDOMElement("i", classes)
-}
-
-function createSettingsHeader() {
-    var settingsHeader = createDOMElement("div", "settings-header")
-    var settingsText = window.document.createElement("span")
-    settingsText.innerText = "Settings"
-    var settingsIcon = createIcon("fas fa-sliders-h", "settings-icon")
-    settingsHeader.appendChild(settingsIcon)
-    settingsHeader.appendChild(settingsText)
-    return settingsHeader
-}
-
-function createToTimerButton() {
-    var toTimerButtonContainer = createDOMElement("div", "to-timer-button-container")
-    var toTimerButton = createDOMElement("button", "to-timer-button")
-    toTimerButton.onclick = function() {
-        return createWindowEvent(routerEvents.toTimer)
-    }
-    var toTimerIcon = createIcon("fas fa-play")
-    toTimerButton.appendChild(toTimerIcon)
-    toTimerButtonContainer.appendChild(toTimerButton)
-    return toTimerButtonContainer
-}
-
-function createOptionsDetailContainer(option) {
-    var optionDetailsContainer = createDOMElement("div", "option-details-container")
-    optionDetailsContainer.setAttribute("id", option.title + " setting")
-    return optionDetailsContainer
-}
-
-function createIncrementButtonIcon(isDecrementing) {
-    var iconSuffix = isDecrementing ? "minus" : "plus"
-    var iconName = "fas fa-" + iconSuffix
-    return createIcon(iconName)
-}
-
-function createButtonThatIncrements(option, number, isDecrementing) {
-    var type = isDecrementing ? "decrement" : "increment"
-    var CSSClass = type + "-interval"
-    var button = createDOMElement("button", "interval-control-button " + CSSClass)
-    var targetOptionFunction = type + "Function"
-    button.onclick = (function(options) {
-        return function() {
-            // returns -1 if mutation was unsuccessful
-            var newValue = options.incrementingFunction()
-            if (newValue !== -1) {
-                options.targetNumber.innerText = newValue.toString()
+    var componentRenderFunctions = {
+        createToTimerButton: function(app) {
+            var toTimerButtonContainer = app.globalMethods.createDOMElement("div", "to-timer-button-container")
+            var toTimerButton = app.globalMethods.createDOMElement("button", "to-timer-button")
+            toTimerButton.onclick = function() {
+                return app.globalMethods.createWindowEvent(routerEvents.toTimer)
             }
+            var toTimerIcon = app.globalMethods.createIcon("fas fa-play")
+            toTimerButton.appendChild(toTimerIcon)
+            toTimerButtonContainer.appendChild(toTimerButton)
+            return toTimerButtonContainer
+        },
+        createSettingsHeader: function(app) {
+            var settingsHeader = app.globalMethods.createDOMElement("div", "settings-header")
+            var settingsText = window.document.createElement("span")
+            settingsText.innerText = "Settings"
+            var settingsIcon = app.globalMethods.createIcon("fas fa-sliders-h", "settings-icon")
+            settingsHeader.appendChild(settingsIcon)
+            settingsHeader.appendChild(settingsText)
+            return settingsHeader
+        },
+        createOptionsContainer: function(app) {
+            return app.globalMethods.createDOMElement("div", "options-selection-container")
+        },
+        createOptionsDetailContainer: function (option, app) {
+            var optionDetailsContainer = app.globalMethods.createDOMElement("div", "option-details-container")
+            optionDetailsContainer.setAttribute("id", option.title + " setting")
+            return optionDetailsContainer
+        },
+        createSettingTitle: function(option, optionDetailsContainer, app) {
+            var title = app.globalMethods.createDOMElement("div", "option-title")
+            title.innerText = option.title
+            // used a closure here to capture the title and container of this
+            // particular iteration; without it every onclick event would always
+            // run the 'onclick' function the last element iterated over.
+            title.onclick = (function(options) {
+                return function() {
+                    options.container.classList.toggle("show")
+                    var milliseconds = 1_000
+                    if (!options.title.classList.contains('open-mode')) {
+                        milliseconds = 0
+                    }
+                    // setTimeout is used here because I only want the border
+                    // radius of the clickable area (the title) to change
+                    // once all dropdown contents have disappeared
+                    return window.setTimeout(function() {
+                        return options.title.classList.toggle("open-mode")
+                    }, milliseconds)
+                }
+            })({ title: title, container: optionDetailsContainer });
+            return title
+        },
+        createButtonThatIncrements: function(option, number, isDecrementing, app) {
+            var type = isDecrementing ? "decrement" : "increment"
+            var CSSClass = type + "-interval"
+            var button = app.globalMethods.createDOMElement("button", "interval-control-button " + CSSClass)
+            var targetOptionFunction = type + "Function"
+            button.onclick = (function(options) {
+                return function() {
+                    // returns -1 if mutation was unsuccessful
+                    var newValue = options.incrementingFunction()
+                    if (newValue !== -1) {
+                        options.targetNumber.innerText = newValue.toString()
+                    }
+                }
+            })({ incrementingFunction: option[targetOptionFunction], targetNumber: number });
+            var icon = methods.createIncrementButtonIcon(isDecrementing)
+            button.appendChild(icon)
+            return button
         }
-    })({ incrementingFunction: option[targetOptionFunction], targetNumber: number });
-    var icon = createIncrementButtonIcon(isDecrementing)
-    button.appendChild(icon)
-    return button
-}
+    }
 
-function createIncrementButton(option, number) {
-    return createButtonThatIncrements(option, number, false)
-}
+    var toTimerButtonContainer = componentRenderFunctions.createToTimerButton(app)
+    var settingsHeader = componentRenderFunctions.createSettingsHeader(app)
+    var optionsContainer = componentRenderFunctions.createOptionsContainer(app)
 
-function createDecrementButton(option, number) {
-    return createButtonThatIncrements(option, number, true)
-}
+    for (var i = 0; i < localState.timerOptions.length; i++) {
+        var option = localState.timerOptions[i]
 
-function createSettingTitle(option, optionDetailsContainer) {
-    var title = createDOMElement("div", "option-title")
-    title.innerText = option.title
-    // used a closure here to capture the title and container of this
-    // particular iteration; without it every onclick event would always
-    // run the 'onclick' function the last element iterated over.
-    title.onclick = (function(options) {
-        return function() {
-            options.container.classList.toggle("show")
-            var milliseconds = 1_000
-            if (!options.title.classList.contains('open-mode')) {
-                milliseconds = 0
-            }
-            // setTimeout is used here because I only want the border
-            // radius of the clickable area (the title) to change
-            // once all dropdown contents have disappeared
-            return window.setTimeout(function() {
-                return options.title.classList.toggle("open-mode")
-            }, milliseconds)
-        }
-    })({ title: title, container: optionDetailsContainer });
-    return title
-}
+        var rootOptionElement = app.globalMethods.createDOMElement("div", "option-container")
+        var optionDetailsContainer = componentRenderFunctions.createOptionsDetailContainer(option, app)
 
-function createView() {
-    return createDOMElement("div", "view-container")
-}
+        var title = componentRenderFunctions.createSettingTitle(option, optionDetailsContainer, app)
 
-function homeRender(app) {
-    var view = createView()
-    var toTimerButtonContainer = createToTimerButton()
-    view.appendChild(toTimerButtonContainer)
-
-    var settingsHeader = createSettingsHeader()
-    view.appendChild(settingsHeader)
-
-    var optionsContainer = createDOMElement("div", "options-selection-container")
-    view.appendChild(optionsContainer)
-
-    // create individual setting containers
-    var options = [
-        { 
-            title: "Break Session", 
-            targetStateKey: "breakSessionMinutes",
-            incrementFunction: app.incrementBreakSession,
-            decrementFunction: app.decrementBreakSession
-        },
-        { 
-            title: "Work Session", 
-            targetStateKey: "workSessionMinutes",
-            incrementFunction: app.incrementWorkSession,
-            decrementFunction: app.decrementWorkSession
-        },
-        { 
-            title: "Long Break", 
-            targetStateKey: "longBreakMinutes",
-            incrementFunction: app.incrementLongBreak,
-            decrementFunction: app.decrementLongBreak
-        },
-        { 
-            title: "Long Break After", 
-            incrementType: "sessions", 
-            targetStateKey: "sessionsUntilLongBreak",
-            incrementFunction: app.incrementWorkSessions,
-            decrementFunction: app.decrementWorkSessions 
-        },
-    ]
-    for (var i = 0; i < options.length; i++) {
-        var option = options[i]
-        var rootOptionElement = createDOMElement("div", "option-container")
-
-        var optionDetailsContainer = createOptionsDetailContainer(option)
-
-        var title = createSettingTitle(option, optionDetailsContainer)
-
-        var numberDiv = createDOMElement("div", "option-interval-number")
+        var numberDiv = app.globalMethods.createDOMElement("div", "option-interval-number")
 
         var number = window.document.createElement("div")
         number.innerText = app.getState(option.targetStateKey).toString()
 
-        var incrementButton = createIncrementButton(option, number)
+        var incrementButton = componentRenderFunctions
+            .createButtonThatIncrements(option, number, false, app)
         numberDiv.appendChild(incrementButton)
         numberDiv.appendChild(number)
 
-        var intervalMetricDiv = createDOMElement("div", "option-interval-metric-container")
+        var intervalMetricDiv = app.globalMethods.createDOMElement("div", "option-interval-metric-container")
 
-        var intervalMetric = createDOMElement("div", "option-interval-metric")
+        var intervalMetric = app.globalMethods.createDOMElement("div", "option-interval-metric")
         var defaultIncrementType = "min"
         intervalMetric.innerText = option.incrementType || defaultIncrementType
 
-        var decrementButton = createDecrementButton(option, number)
+        var decrementButton = componentRenderFunctions
+            .createButtonThatIncrements(option, number, true, app)
 
         intervalMetricDiv.appendChild(intervalMetric)
         intervalMetricDiv.appendChild(decrementButton)
@@ -327,317 +351,42 @@ function homeRender(app) {
         }
         optionsContainer.appendChild(rootOptionElement)
     }
-    return view
+
+    return [
+        toTimerButtonContainer,
+        settingsHeader,
+        optionsContainer
+    ]
 }
 
-function createViewEvent(view, eventName) {
-    var event = window.document.createEvent("Event")
-    event.initEvent(eventName, true, true)
-    return view.dispatchEvent(event)
-}
-
-function createSessionsIndicatorContainer(app, view, parentEventNames, parentState) {
-    var sessionsIndicatorContainer = createDOMElement("div", "sessions-indicator-container")
-    for (var i = 0; i < app.getState("sessionsUntilLongBreak"); i++) {
-        var extraClasses = i === 0 ? " active" : ""
-        var sessionIndicator = createDOMElement("div", "session-indicator" + extraClasses)
-        sessionsIndicatorContainer.appendChild(sessionIndicator)
-    }
-
-    view.addEventListener(parentEventNames.rerenderSessionsIndicators, function() {
-        var children = sessionsIndicatorContainer.children
-        for (var i = 0; i < children.length; i++) {
-            var child = children[i]
-            child.className = "session-indicator"
-            if (parentState.currentSession === i + 1) {
-                child.classList.toggle("active")
-                continue
-            }
-            if (parentState.currentSession > i + 1) {
-                child.classList.toggle("finished")
-            }
-        }
-    })
-
-    return sessionsIndicatorContainer
-}
-
-function createCountdownTimerContainer(parentState, view, parentEventNames, parentMethods, app) {
-    var methods = {
-        addZeroToIntIfUnderTen(int) {
-            var stringified = int.toString()
-            return int < 10 ? "0" + stringified : stringified
-        },
-        stringifiedMinutes() {
-            return this.addZeroToIntIfUnderTen(parentState.countdownMinutes)
-        },
-        stringifiedSeconds() {
-            return this.addZeroToIntIfUnderTen(parentState.countdownSeconds)
-        },
-        currentTimingDisplay() {
-            return this.stringifiedMinutes() + ":" + this.stringifiedSeconds()
-        },
-        targetIconName() {
-            var currentSession = parentState.sessionType
-            if (parentMethods.isWorkSession(currentSession)) {
-                return "fa-briefcase"
-            } else if (parentMethods.isLongBreakSession(currentSession)) {
-                return "fa-bed"
-            } else {
-                return "fa-coffee"
-            }
-        },
-        targetBackgroundColor() {
-            var currentSession = parentState.sessionType
-            if (parentMethods.nextSessionIsLastSession() && !parentMethods.isLongBreakSession(parentState.sessionType)) {
-                return "yellow"
-            } else if (parentMethods.isWorkSession(currentSession)) {
-                return "green"
-            } else {
-                return "red"
-            }
-        },
-        targetSliceColor() {
-            var currentSession = parentState.sessionType
-            if (parentMethods.isLongBreakSession(currentSession)) {
-                return "yellow"
-            } else if (parentMethods.isWorkSession(currentSession)) {
-                return "red"
-            } else {
-                return "green"
-            }
-        }
-    }
-
-    var countdownTimerContainer = createDOMElement("div", "countdown-timer-container green")
-
-    var countdownSlicesContainer = createDOMElement("div", "countdown-slices-container")
-    
-    var rightCountdownSliceContainer = createDOMElement("div", "countdown-slice-container right")
-    var rightCountdownSlice = createDOMElement("div", "countdown-slice right")
-    rightCountdownSliceContainer.appendChild(rightCountdownSlice)
-
-    var leftCountdownSliceContainer = createDOMElement("div", "countdown-slice-container")
-    var leftCountdownSlice = createDOMElement("div", "countdown-slice")
-    leftCountdownSliceContainer.appendChild(leftCountdownSlice)
-
-    countdownSlicesContainer.appendChild(leftCountdownSliceContainer)
-    countdownSlicesContainer.appendChild(rightCountdownSliceContainer)
-
-    var countdownTimerTextContainer = createDOMElement("div", "countdown-text-display-container")
-    var countdownTimerText = createDOMElement("div", "countdown-text-display")
-    
-    var textContainer = window.document.createElement("div")
-    textContainer.innerText = methods.currentTimingDisplay()
-    
-    var countdownIconContainer = window.document.createElement("div")
-    var workSessionIcon = createIcon("fas fa-briefcase")
-    var breakSessionIcon = createIcon("fas fa-coffee", parentState.hiddenIconClassName)
-    var longBreakIcon = createIcon("fas fa-bed", parentState.hiddenIconClassName)
-
-    countdownIconContainer.appendChild(workSessionIcon)
-    countdownIconContainer.appendChild(breakSessionIcon)
-    countdownIconContainer.appendChild(longBreakIcon)
-    
-    countdownTimerText.appendChild(textContainer)
-    countdownTimerText.appendChild(countdownIconContainer) 
-
-    countdownTimerTextContainer.appendChild(countdownTimerText)
-
-    countdownTimerContainer.appendChild(countdownSlicesContainer)
-    countdownTimerContainer.appendChild(countdownTimerTextContainer)
-
-    view.addEventListener(parentEventNames.timeDisplayUpdate, function() {
-        var time = methods.currentTimingDisplay()
-        textContainer.innerText = time
-        return document.title = "(" + time + ") " + app.getTitle()
-    })
-    view.addEventListener(parentEventNames.timerIconChange, function() {
-        var targetIcon = methods.targetIconName()
-        countdownTimerContainer.className = "countdown-timer-container " + methods.targetBackgroundColor() 
-        for (var icon of [workSessionIcon, breakSessionIcon, longBreakIcon]) {
-            var isTargetIcon = icon.classList.contains(targetIcon)
-            if (isTargetIcon) {
-                icon.classList.toggle(parentState.hiddenIconClassName)
-            } else if (!icon.classList.contains(parentState.hiddenIconClassName)) {
-                icon.classList.toggle(parentState.hiddenIconClassName)
-            }
-        }
-    })
-    view.addEventListener(parentEventNames.timeDisplayUpdate, function() {
-        var minuteToSecondsFactor = 60
-        // original time seconds is always zero so no need to add seconds to original time
-        var originalTime = parentState.originalCountdownMinutes * minuteToSecondsFactor
-        var currentTime = parentState.countdownMinutes * minuteToSecondsFactor + parentState.countdownSeconds
-        var to4DigitsAfterDecimal = 10_000
-        var elapsedTimePercentage = 1 - Math.ceil((currentTime/originalTime) * to4DigitsAfterDecimal)/ to4DigitsAfterDecimal
-
-        var fiftyPercent = 0.4_999
-        var oneHundredPercent = 0.9_999
-        var totalDegreesOfRotation = 360
-        var startPosition = "rotate(0deg)"
-        if (elapsedTimePercentage < fiftyPercent) {
-            rightCountdownSliceContainer.style.transform = "rotate(" + elapsedTimePercentage * totalDegreesOfRotation + "deg)" 
-        } else if (elapsedTimePercentage > fiftyPercent && elapsedTimePercentage < oneHundredPercent) {
-            rightCountdownSliceContainer.style.transform = startPosition
-            rightCountdownSlice.className = "countdown-slice right " + methods.targetBackgroundColor()
-            leftCountdownSliceContainer.style.transform = "rotate(" + (elapsedTimePercentage - 0.5) * totalDegreesOfRotation + "deg)" 
-        } else {
-            rightCountdownSliceContainer.style.transform = startPosition
-            leftCountdownSliceContainer.style.transform = startPosition
-            leftCountdownSlice.className = "countdown-slice " + methods.targetBackgroundColor()
-        }
-    })
-    view.addEventListener(parentEventNames.timerSliceReset, function() {
-        rightCountdownSliceContainer.style.transform = "rotate(0deg)"
-        leftCountdownSliceContainer.style.transform = "rotate(0deg)"
-        leftCountdownSlice.className = "countdown-slice " + methods.targetSliceColor()
-        rightCountdownSlice.className = "countdown-slice right " + methods.targetSliceColor()
-    })
-
-    return countdownTimerContainer
-}
-
-function createCountdownControlsContainer(parentState, view, parentEventNames, parentMethods, sessionTypes, app) {
-    var methods = {
-        nextSessionButtonColor() {
-            if (
-                parentState.currentSession === app.getState("sessionsUntilLongBreak") - 1 && 
-                parentMethods.isShortBreakSession(parentState.sessionType)
-            ) {
-                return "yellow"
-            } else if (
-                parentMethods.nextSessionName() === sessionTypes[1] || 
-                (parentMethods.isNextSessionLongBreak() && !parentMethods.isLongBreakSession(parentState.sessionType))
-            ) {
-                return "red"
-            } else {
-                return "green"
-            }
-        },
-        nextSessionButtonIconName() {
-            var suffix = ""
-            if (
-                parentState.currentSession === app.getState("sessionsUntilLongBreak") - 1 && 
-                parentMethods.isShortBreakSession(parentState.sessionType)
-            ) {
-                suffix = "bed"
-            } else if (
-                parentMethods.nextSessionName() === sessionTypes[1] || 
-                (parentMethods.isNextSessionLongBreak() && !parentMethods.isLongBreakSession(parentState.sessionType))
-            ) {
-                suffix = "briefcase"
-            } else {
-                suffix = "coffee"
-            }
-            var baseName = "fa-"
-            return baseName + suffix
-        },
-        recreateNextSessionButton(nextSessionButton, sessionIcons) {
-            var color = this.nextSessionButtonColor()
-            var iconName = this.nextSessionButtonIconName()
-            nextSessionButton.className = "countdown-control-button " + color
-            for (var icon of sessionIcons) {
-                var isTargetIcon = icon.classList.contains(iconName)
-                if (isTargetIcon) {
-                    icon.classList.toggle(parentState.hiddenIconClassName)
-                } else if (!icon.classList.contains(parentState.hiddenIconClassName)) {
-                    icon.classList.toggle(parentState.hiddenIconClassName)
-                }
-            }
-            return nextSessionButton.appendChild(icon)
-        }
-    }
-    var countdownControlsContainer = createDOMElement("div", "countdown-controls-container")
-
-    var playPauseButtonContainer = createDOMElement("div", "countdown-control-container")
-    var playPauseButton = createDOMElement("button", "countdown-control-button")
-    var playIcon = createIcon("fas fa-play", parentState.hiddenIconClassName)
-    var pauseIcon = createIcon("fas fa-pause")
-    playPauseButton.onclick = function() {
-        playIcon.classList.toggle(parentState.hiddenIconClassName)
-        pauseIcon.classList.toggle(parentState.hiddenIconClassName)
-        createViewEvent(view, parentEventNames.toggleTimer)
-        return createViewEvent(view, parentEventNames.stopAudio)
-    }
-    playPauseButton.appendChild(playIcon)
-    playPauseButton.appendChild(pauseIcon)
-    playPauseButtonContainer.appendChild(playPauseButton)
-
-    var nextSessionButtonContainer = createDOMElement("div", "countdown-control-container")
-    var nextSessionButton = createDOMElement("button", "countdown-control-button green")
-    var shortBreakIcon = createIcon("fas fa-coffee")
-    var longBreakIcon = createIcon("fas fa-bed", parentState.hiddenIconClassName)
-    var workIcon = createIcon("fas fa-briefcase", parentState.hiddenIconClassName)
-    
-    nextSessionButton.appendChild(shortBreakIcon)
-    nextSessionButton.appendChild(longBreakIcon)
-    nextSessionButton.appendChild(workIcon)
-    nextSessionButtonContainer.appendChild(nextSessionButton)
-    
-    nextSessionButton.onclick = function() {
-        createViewEvent(view, parentEventNames.stopAudio)
-        methods.recreateNextSessionButton(nextSessionButton, [shortBreakIcon, longBreakIcon, workIcon])
-        return createViewEvent(view, parentEventNames.sessionTypeChange)
-    }
-
-    view.addEventListener(parentEventNames.togglePlayButton, function() {
-        playIcon.classList.toggle(parentState.hiddenIconClassName)
-        pauseIcon.classList.toggle(parentState.hiddenIconClassName)
-    })
-    view.addEventListener(parentEventNames.renderNextSessionButton, function() {
-        return methods.recreateNextSessionButton(nextSessionButton, [shortBreakIcon, longBreakIcon, workIcon])
-    })
-
-    countdownControlsContainer.appendChild(playPauseButtonContainer)
-    countdownControlsContainer.appendChild(nextSessionButtonContainer)
-    return countdownControlsContainer
-}
-
-function createBackToHomeContainer(view, parentEventNames, app) {
-    var backToHomeButtonContainer = createDOMElement("div", "back-to-home-button-container")
-    var backToHomeButton = createDOMElement("button", "back-to-home-button")
-    backToHomeButton.onclick = function() {
-        createViewEvent(view, parentEventNames.clearTimerInterval)
-        createViewEvent(view, parentEventNames.stopAudio)
-        document.title = app.getTitle()
-        return toHomepageEvent()
-    }
-    var backToHomeIcon = createIcon("fas fa-cog")
-    backToHomeButton.appendChild(backToHomeIcon)
-    backToHomeButtonContainer.appendChild(backToHomeButton)
-
-    return backToHomeButtonContainer
-}
-
-function timerRender(app) {
-    var timerAudio = window.document.createElement("audio")
-    timerAudio.src = "timer.mp3"
-
-    var sessionTypes = ["work", "shortBreak", "longBreak"]
+function timerRender(app, view, createViewEvent, routerEvents) {
     var localState = {
         originalCountdownMinutes: app.getState("workSessionMinutes"),
         countdownMinutes: app.getState("workSessionMinutes"),
         countdownSeconds: 0,
         currentSession: 1,
-        sessionType: sessionTypes[0],
+        sessionType: "work",
+        sessionTypes: ["work", "shortBreak", "longBreak"],
         isPlaying: true,
         isFinishedCountdown: false,
         oneSecondInMilliseconds: 1_000,
         hiddenIconClassName: "hidden-icon",
-        audioRepeatCount: 0
-    }
-    var localEventNames = {
-        toggleTimer: "timer-toggled",
-        timeDisplayUpdate: "time-display-update",
-        clearTimerInterval: "clear-timer",
-        sessionTypeChange: "session-type-change",
-        timerIconChange: "timer-icon-change",
-        rerenderSessionsIndicators: "rerender-sessions-indicators",
-        timerSliceReset: "timer-slice-reset",
-        togglePlayButton: "toggle-play-button",
-        renderNextSessionButton: "render-next-session-button",
-        stopAudio: "stop-audio"
+        audioRepeatCount: 0,
+        stopAudio: true,
+        audioCallback: null,
+        eventNames: {
+            toggleTimer: "timer-toggled",
+            timeDisplayUpdate: "time-display-update",
+            clearTimerInterval: "clear-timer",
+            sessionTypeChange: "session-type-change",
+            timerIconChange: "timer-icon-change",
+            rerenderSessionsIndicators: "rerender-sessions-indicators",
+            timerSliceReset: "timer-slice-reset",
+            togglePlayButton: "toggle-play-button",
+            renderNextSessionButton: "render-next-session-button",
+            stopAudio: "stop-audio",
+            createStopAudioPopup: "create-stop-audio-popup"
+        }
     }
     var methods = {
         overwriteTimerMinutesAndSeconds(minutes, seconds) {
@@ -649,23 +398,23 @@ function timerRender(app) {
         },
         nextSessionName() {
             var isNextSessionLongBreak = localState.currentSession === app.getState("sessionsUntilLongBreak") &&
-                localState.sessionType === sessionTypes[0]
+                localState.sessionType === localState.sessionTypes[0]
             if (isNextSessionLongBreak) {
-                return sessionTypes[2]
-            } else if (localState.sessionType === sessionTypes[0]) {
-                return sessionTypes[1]
+                return localState.sessionTypes[2]
+            } else if (localState.sessionType === localState.sessionTypes[0]) {
+                return localState.sessionTypes[1]
             } else {
-                return sessionTypes[0]
+                return localState.sessionTypes[0]
             }
         },
         isWorkSession(session) {
-            return session === sessionTypes[0]
+            return session === localState.sessionTypes[0]
         },
         isShortBreakSession(session) {
-            return session === sessionTypes[1]
+            return session === localState.sessionTypes[1]
         },
         isLongBreakSession(session) {
-            return session === sessionTypes[2]
+            return session === localState.sessionTypes[2]
         },
         replaceTimerWithNextSessionTime() {
             var nextSession = this.nextSessionName()
@@ -689,9 +438,307 @@ function timerRender(app) {
             return localState.currentSession === app.getState("sessionsUntilLongBreak")
         },
         rerenderSessionsIndicators() {
-            return createViewEvent(view, localEventNames.rerenderSessionsIndicators)
+            return createViewEvent(localState.eventNames.rerenderSessionsIndicators)
+        },
+        createViewEvent(eventName) {
+            return createViewEvent(eventName)
+        },
+        pushToHome() {
+            return app.globalMethods.createWindowEvent(routerEvents.toHome)
         }
     }
+    var componentRenderFunctions = {
+        createSessionsIndicatorContainer: function(app, view, parentState) {
+            var sessionsIndicatorContainer = app.globalMethods.createDOMElement("div", "sessions-indicator-container")
+            for (var i = 0; i < app.getState("sessionsUntilLongBreak"); i++) {
+                var extraClasses = i === 0 ? " active" : ""
+                var sessionIndicator = app.globalMethods.createDOMElement("div", "session-indicator" + extraClasses)
+                sessionsIndicatorContainer.appendChild(sessionIndicator)
+            }
+        
+            view.addEventListener(parentState.eventNames.rerenderSessionsIndicators, function() {
+                var children = sessionsIndicatorContainer.children
+                for (var i = 0; i < children.length; i++) {
+                    var child = children[i]
+                    child.className = "session-indicator"
+                    if (parentState.currentSession === i + 1) {
+                        child.classList.toggle("active")
+                        continue
+                    }
+                    if (parentState.currentSession > i + 1) {
+                        child.classList.toggle("finished")
+                    }
+                }
+            })
+        
+            return sessionsIndicatorContainer
+        },
+        createCountdownTimerContainer: function(parentState, view, parentMethods, app) {
+            var methods = {
+                addZeroToIntIfUnderTen(int) {
+                    var stringified = int.toString()
+                    return int < 10 ? "0" + stringified : stringified
+                },
+                stringifiedMinutes() {
+                    return this.addZeroToIntIfUnderTen(parentState.countdownMinutes)
+                },
+                stringifiedSeconds() {
+                    return this.addZeroToIntIfUnderTen(parentState.countdownSeconds)
+                },
+                currentTimingDisplay() {
+                    return this.stringifiedMinutes() + ":" + this.stringifiedSeconds()
+                },
+                targetIconName() {
+                    var currentSession = parentState.sessionType
+                    if (parentMethods.isWorkSession(currentSession)) {
+                        return "fa-briefcase"
+                    } else if (parentMethods.isLongBreakSession(currentSession)) {
+                        return "fa-bed"
+                    } else {
+                        return "fa-coffee"
+                    }
+                },
+                targetBackgroundColor() {
+                    var currentSession = parentState.sessionType
+                    if (parentMethods.nextSessionIsLastSession() && !parentMethods.isLongBreakSession(parentState.sessionType)) {
+                        return "yellow"
+                    } else if (parentMethods.isWorkSession(currentSession)) {
+                        return "green"
+                    } else {
+                        return "red"
+                    }
+                },
+                targetSliceColor() {
+                    var currentSession = parentState.sessionType
+                    if (parentMethods.isLongBreakSession(currentSession)) {
+                        return "yellow"
+                    } else if (parentMethods.isWorkSession(currentSession)) {
+                        return "red"
+                    } else {
+                        return "green"
+                    }
+                }
+            }
+        
+            var countdownTimerContainer = app.globalMethods.createDOMElement("div", "countdown-timer-container green")
+        
+            var countdownSlicesContainer = app.globalMethods.createDOMElement("div", "countdown-slices-container")
+            
+            var rightCountdownSliceContainer = app.globalMethods.createDOMElement("div", "countdown-slice-container right")
+            var rightCountdownSlice = app.globalMethods.createDOMElement("div", "countdown-slice right")
+            rightCountdownSliceContainer.appendChild(rightCountdownSlice)
+        
+            var leftCountdownSliceContainer = app.globalMethods.createDOMElement("div", "countdown-slice-container")
+            var leftCountdownSlice = app.globalMethods.createDOMElement("div", "countdown-slice")
+            leftCountdownSliceContainer.appendChild(leftCountdownSlice)
+        
+            countdownSlicesContainer.appendChild(leftCountdownSliceContainer)
+            countdownSlicesContainer.appendChild(rightCountdownSliceContainer)
+        
+            var countdownTimerTextContainer = app.globalMethods.createDOMElement("div", "countdown-text-display-container")
+            var countdownTimerText = app.globalMethods.createDOMElement("div", "countdown-text-display")
+            
+            var textContainer = window.document.createElement("div")
+            textContainer.innerText = methods.currentTimingDisplay()
+            
+            var countdownIconContainer = window.document.createElement("div")
+            var workSessionIcon = app.globalMethods.createIcon("fas fa-briefcase")
+            var breakSessionIcon = app.globalMethods.createIcon("fas fa-coffee", parentState.hiddenIconClassName)
+            var longBreakIcon = app.globalMethods.createIcon("fas fa-bed", parentState.hiddenIconClassName)
+        
+            countdownIconContainer.appendChild(workSessionIcon)
+            countdownIconContainer.appendChild(breakSessionIcon)
+            countdownIconContainer.appendChild(longBreakIcon)
+            
+            countdownTimerText.appendChild(textContainer)
+            countdownTimerText.appendChild(countdownIconContainer) 
+        
+            countdownTimerTextContainer.appendChild(countdownTimerText)
+        
+            countdownTimerContainer.appendChild(countdownSlicesContainer)
+            countdownTimerContainer.appendChild(countdownTimerTextContainer)
+        
+            view.addEventListener(parentState.eventNames.timeDisplayUpdate, function() {
+                var time = methods.currentTimingDisplay()
+                textContainer.innerText = time
+                return document.title = "(" + time + ") " + app.getTitle()
+            })
+            view.addEventListener(parentState.eventNames.timerIconChange, function() {
+                var targetIcon = methods.targetIconName()
+                countdownTimerContainer.className = "countdown-timer-container " + methods.targetBackgroundColor() 
+                for (var icon of [workSessionIcon, breakSessionIcon, longBreakIcon]) {
+                    var isTargetIcon = icon.classList.contains(targetIcon)
+                    if (isTargetIcon) {
+                        icon.classList.toggle(parentState.hiddenIconClassName)
+                    } else if (!icon.classList.contains(parentState.hiddenIconClassName)) {
+                        icon.classList.toggle(parentState.hiddenIconClassName)
+                    }
+                }
+            })
+            view.addEventListener(parentState.eventNames.timeDisplayUpdate, function() {
+                var minuteToSecondsFactor = 60
+                // original time seconds is always zero so no need to add seconds to original time
+                var originalTime = parentState.originalCountdownMinutes * minuteToSecondsFactor
+                var currentTime = parentState.countdownMinutes * minuteToSecondsFactor + parentState.countdownSeconds
+                var to4DigitsAfterDecimal = 10_000
+                var elapsedTimePercentage = 1 - Math.ceil((currentTime/originalTime) * to4DigitsAfterDecimal)/ to4DigitsAfterDecimal
+        
+                var fiftyPercent = 0.4_999
+                var oneHundredPercent = 0.9_999
+                var totalDegreesOfRotation = 360
+                var startPosition = "rotate(0deg)"
+                if (elapsedTimePercentage < fiftyPercent) {
+                    rightCountdownSliceContainer.style.transform = "rotate(" + elapsedTimePercentage * totalDegreesOfRotation + "deg)" 
+                } else if (elapsedTimePercentage > fiftyPercent && elapsedTimePercentage < oneHundredPercent) {
+                    rightCountdownSliceContainer.style.transform = startPosition
+                    rightCountdownSlice.className = "countdown-slice right " + methods.targetBackgroundColor()
+                    leftCountdownSliceContainer.style.transform = "rotate(" + (elapsedTimePercentage - 0.5) * totalDegreesOfRotation + "deg)" 
+                } else {
+                    rightCountdownSliceContainer.style.transform = startPosition
+                    leftCountdownSliceContainer.style.transform = startPosition
+                    leftCountdownSlice.className = "countdown-slice " + methods.targetBackgroundColor()
+                }
+            })
+            view.addEventListener(parentState.eventNames.timerSliceReset, function() {
+                rightCountdownSliceContainer.style.transform = "rotate(0deg)"
+                leftCountdownSliceContainer.style.transform = "rotate(0deg)"
+                leftCountdownSlice.className = "countdown-slice " + methods.targetSliceColor()
+                rightCountdownSlice.className = "countdown-slice right " + methods.targetSliceColor()
+            })
+        
+            return countdownTimerContainer
+        },
+        createCountdownControlsContainer: function(parentState, view, parentMethods, app) {
+            var methods = {
+                nextSessionButtonColor() {
+                    if (
+                        parentState.currentSession === app.getState("sessionsUntilLongBreak") - 1 && 
+                        parentMethods.isShortBreakSession(parentState.sessionType)
+                    ) {
+                        return "yellow"
+                    } else if (
+                        parentMethods.nextSessionName() === parentState.sessionTypes[1] || 
+                        (parentMethods.isNextSessionLongBreak() && !parentMethods.isLongBreakSession(parentState.sessionType))
+                    ) {
+                        return "red"
+                    } else {
+                        return "green"
+                    }
+                },
+                nextSessionButtonIconName() {
+                    var suffix = ""
+                    if (
+                        parentState.currentSession === app.getState("sessionsUntilLongBreak") - 1 && 
+                        parentMethods.isShortBreakSession(parentState.sessionType)
+                    ) {
+                        suffix = "bed"
+                    } else if (
+                        parentMethods.nextSessionName() === parentState.sessionTypes[1] || 
+                        (parentMethods.isNextSessionLongBreak() && !parentMethods.isLongBreakSession(parentState.sessionType))
+                    ) {
+                        suffix = "briefcase"
+                    } else {
+                        suffix = "coffee"
+                    }
+                    var baseName = "fa-"
+                    return baseName + suffix
+                },
+                recreateNextSessionButton(nextSessionButton, sessionIcons) {
+                    var color = this.nextSessionButtonColor()
+                    var iconName = this.nextSessionButtonIconName()
+                    nextSessionButton.className = "countdown-control-button " + color
+                    for (var icon of sessionIcons) {
+                        var isTargetIcon = icon.classList.contains(iconName)
+                        if (isTargetIcon) {
+                            icon.classList.toggle(parentState.hiddenIconClassName)
+                        } else if (!icon.classList.contains(parentState.hiddenIconClassName)) {
+                            icon.classList.toggle(parentState.hiddenIconClassName)
+                        }
+                    }
+                    return nextSessionButton.appendChild(icon)
+                }
+            }
+            var countdownControlsContainer = app.globalMethods.createDOMElement("div", "countdown-controls-container")
+        
+            var playPauseButtonContainer = app.globalMethods.createDOMElement("div", "countdown-control-container")
+            var playPauseButton = app.globalMethods.createDOMElement("button", "countdown-control-button")
+            var playIcon = app.globalMethods.createIcon("fas fa-play", parentState.hiddenIconClassName)
+            var pauseIcon = app.globalMethods.createIcon("fas fa-pause")
+            playPauseButton.onclick = function() {
+                playIcon.classList.toggle(parentState.hiddenIconClassName)
+                pauseIcon.classList.toggle(parentState.hiddenIconClassName)
+                parentMethods.createViewEvent(parentState.eventNames.toggleTimer)
+                return parentMethods.createViewEvent(parentState.eventNames.stopAudio)
+            }
+            playPauseButton.appendChild(playIcon)
+            playPauseButton.appendChild(pauseIcon)
+            playPauseButtonContainer.appendChild(playPauseButton)
+        
+            var nextSessionButtonContainer = app.globalMethods.createDOMElement("div", "countdown-control-container")
+            var nextSessionButton = app.globalMethods.createDOMElement("button", "countdown-control-button green")
+            var shortBreakIcon = app.globalMethods.createIcon("fas fa-coffee")
+            var longBreakIcon = app.globalMethods.createIcon("fas fa-bed", parentState.hiddenIconClassName)
+            var workIcon = app.globalMethods.createIcon("fas fa-briefcase", parentState.hiddenIconClassName)
+            
+            nextSessionButton.appendChild(shortBreakIcon)
+            nextSessionButton.appendChild(longBreakIcon)
+            nextSessionButton.appendChild(workIcon)
+            nextSessionButtonContainer.appendChild(nextSessionButton)
+            
+            nextSessionButton.onclick = function() {
+                parentMethods.createViewEvent(parentState.eventNames.stopAudio)
+                methods.recreateNextSessionButton(nextSessionButton, [shortBreakIcon, longBreakIcon, workIcon])
+                return parentMethods.createViewEvent(parentState.eventNames.sessionTypeChange)
+            }
+        
+            view.addEventListener(parentState.eventNames.togglePlayButton, function() {
+                playIcon.classList.toggle(parentState.hiddenIconClassName)
+                pauseIcon.classList.toggle(parentState.hiddenIconClassName)
+            })
+            view.addEventListener(parentState.eventNames.renderNextSessionButton, function() {
+                return methods.recreateNextSessionButton(nextSessionButton, [shortBreakIcon, longBreakIcon, workIcon])
+            })
+        
+            countdownControlsContainer.appendChild(playPauseButtonContainer)
+            countdownControlsContainer.appendChild(nextSessionButtonContainer)
+            return countdownControlsContainer
+        },
+        createBackToHomeContainer: function(parentState, app, parentMethods) {
+            var backToHomeButtonContainer = app.globalMethods.createDOMElement("div", "back-to-home-button-container")
+            var backToHomeButton = app.globalMethods.createDOMElement("button", "back-to-home-button")
+            backToHomeButton.onclick = function() {
+                parentMethods.createViewEvent(parentState.eventNames.clearTimerInterval)
+                parentMethods.createViewEvent(parentState.eventNames.stopAudio)
+                document.title = app.getTitle()
+                return parentMethods.pushToHome()
+            }
+            var backToHomeIcon = app.globalMethods.createIcon("fas fa-cog")
+            backToHomeButton.appendChild(backToHomeIcon)
+            backToHomeButtonContainer.appendChild(backToHomeButton)
+        
+            return backToHomeButtonContainer
+        },
+        createTimerAudio: function() {
+            var timerAudio = window.document.createElement("audio")
+            timerAudio.src = "timer.mp3"
+            return timerAudio
+        }
+    }
+
+    var sessionsIndicatorContainer = componentRenderFunctions 
+        .createSessionsIndicatorContainer(app, view, localState)
+        
+    var countdownTimerContainer = componentRenderFunctions
+        .createCountdownTimerContainer(localState, view, methods, app)
+        
+    var countdownControlsContainer = componentRenderFunctions
+        .createCountdownControlsContainer(localState, view, methods, app)
+    
+    var backToHomeButtonContainer = componentRenderFunctions
+        .createBackToHomeContainer(localState, app, methods)
+
+    var timerAudio = componentRenderFunctions.createTimerAudio()
+
     var countdownMutator = window.setInterval(function() {
         if (!localState.isPlaying || localState.isFinishedCountdown) {
             return
@@ -702,66 +749,38 @@ function timerRender(app) {
             seconds = 59
             minutes = minutes - 1
         } else if (seconds < 1 && minutes < 1) {
-            createViewEvent(view, localEventNames.renderNextSessionButton)
-            createViewEvent(view, localEventNames.sessionTypeChange)
-            createViewEvent(view, localEventNames.togglePlayButton)
+            methods.createViewEvent(localState.eventNames.renderNextSessionButton)
+            methods.createViewEvent(localState.eventNames.sessionTypeChange)
+            methods.createViewEvent(localState.eventNames.togglePlayButton)
             localState.isPlaying = false
-            createViewEvent(view, localEventNames.timeDisplayUpdate)
-            timerAudio.play()
-            localState.audioRepeatCount++
-            return timerAudio.addEventListener("ended", function() {
-                if (localState.audioRepeatCount > 2) {
-                    return createViewEvent(view, localEventNames.stopAudio)
-                }
-                var delayBetweenAudioInMilliseconds = 10_000
-                return window.setTimeout(function() {
+            methods.createViewEvent(localState.eventNames.timeDisplayUpdate)
+            methods.createViewEvent(localState.eventNames.createStopAudioPopup)
+            var audioTimeSpanInMilliseconds = 8_000
+            var delayBetweenAudioInMilliseconds = 10_000
+            return localState.audioCallback = window.setInterval(function() {
+                    timerAudio.pause()
+                    if (localState.audioRepeatCount > 2) {
+                        window.clearInterval(localState.audioCallback)
+                        return methods.createViewEvent(localState.eventNames.stopAudio)
+                    }
                     timerAudio.currentTime = 0
                     timerAudio.play()
                     localState.audioRepeatCount++
-                }, delayBetweenAudioInMilliseconds)
-            })
+            }, audioTimeSpanInMilliseconds + delayBetweenAudioInMilliseconds)
         } else {
             seconds = seconds - 1
         }
         methods.overwriteTimerMinutesAndSeconds(minutes, seconds)
-        return createViewEvent(view, localEventNames.timeDisplayUpdate)
+        return methods.createViewEvent(localState.eventNames.timeDisplayUpdate)
     }, localState.oneSecondInMilliseconds)
 
-    var view = createView()
-    var sessionsIndicatorContainer = createSessionsIndicatorContainer(
-        app, 
-        view, 
-        localEventNames,
-        localState
-    )
-    var countdownTimerContainer = createCountdownTimerContainer(
-        localState, 
-        view, 
-        localEventNames, 
-        methods,
-        app
-    )
-    var countdownControlsContainer = createCountdownControlsContainer(
-        localState, 
-        view, 
-        localEventNames, 
-        methods,
-        sessionTypes,
-        app
-    )
-    var backToHomeButtonContainer = createBackToHomeContainer(
-        view, 
-        localEventNames,
-        app
-    )
-
-    view.addEventListener(localEventNames.toggleTimer, function() {
+    view.addEventListener(localState.eventNames.toggleTimer, function() {
         localState.isPlaying = !localState.isPlaying
     })
-    view.addEventListener(localEventNames.clearTimerInterval, function() {
+    view.addEventListener(localState.eventNames.clearTimerInterval, function() {
         return window.clearInterval(countdownMutator)
     })
-    view.addEventListener(localEventNames.sessionTypeChange, function() {
+    view.addEventListener(localState.eventNames.sessionTypeChange, function() {
         if (methods.isShortBreakSession(localState.sessionType)) {
             localState.currentSession += 1
             methods.rerenderSessionsIndicators()
@@ -770,36 +789,50 @@ function timerRender(app) {
             methods.rerenderSessionsIndicators()
         }
         methods.replaceTimerWithNextSessionTime()
-        createViewEvent(view, localEventNames.timerIconChange)
-        return createViewEvent(view, localEventNames.timerSliceReset)
+        methods.createViewEvent(localState.eventNames.timerIconChange)
+        return methods.createViewEvent(localState.eventNames.timerSliceReset)
     })
-    view.addEventListener(localEventNames.stopAudio, function() {
+    view.addEventListener(localState.eventNames.stopAudio, function() {
+        if (localState.audioCallback) {
+            window.clearInterval(localState.audioCallback)
+        }
         timerAudio.pause()
         timerAudio.currentTime = 0
         localState.audioRepeatCount = 0
     })
+    view.addEventListener(localState.eventNames.createStopAudioPopup, function() {
+        var stopAudioPopupContainerLayer = app.globalMethods.createDOMElement("div", "stop-audio-popup-container-layer")
+        var stopAudioPopupContainer = app.globalMethods.createDOMElement("div", "stop-audio-popup-container")
+        var stopAudioText = window.document.createElement("div")
+        stopAudioText.innerText = "Sesssion Finished!"
+        var clockIcon = app.globalMethods.createIcon("fa fa-clock", "stop-audio-icon")
+        var stopAudioButton = app.globalMethods.createDOMElement("button", "stop-audio-button")
+        stopAudioButton.innerText = "Okay"
+        stopAudioButton.onclick = function() {
+            stopAudioPopupContainerLayer.remove()
+            return methods.createViewEvent(localState.eventNames.stopAudio)
+        }
 
-    var viewDirectChildrenElements = [
+        stopAudioPopupContainer.appendChild(clockIcon)
+        stopAudioPopupContainer.appendChild(stopAudioText)
+        stopAudioPopupContainer.appendChild(stopAudioButton)
+        stopAudioPopupContainerLayer.appendChild(stopAudioPopupContainer)
+        view.appendChild(stopAudioPopupContainerLayer)
+    })
+
+    return [
         sessionsIndicatorContainer,
         backToHomeButtonContainer,
         countdownTimerContainer, 
         countdownControlsContainer,
         timerAudio
     ]
-    for (var element of viewDirectChildrenElements) {
-        view.appendChild(element)
-    }
-
-    return view
 }
 
 // App setup
 var app = createApp()
 window.document.title = app.getTitle()
-
-function toHomepageEvent() {
-    return createWindowEvent(routerEvents.toHome)
-}
+app.renderFooter()
 
 var routes = {
     "/": {
@@ -810,21 +843,20 @@ var routes = {
     },
     // 404 not found
     "*": {
-        render: function() {
-            var view = createView()
+        render: function(app, view, _, routerEvents) {
             view.innerText = "Page not found"
-            var icon = createIcon("fa fa-history", "not-found-icon")
+            var icon = app.globalMethods.createIcon("fa fa-history", "not-found-icon")
             
             var container = window.document.createElement("div")
             container.appendChild(icon)
-            view.appendChild(container)
 
-            var button = createDOMElement("button", "not-found-button")
+            var button = app.globalMethods.createDOMElement("button", "not-found-button")
             button.innerText = "Back to Home"
-            button.onclick = toHomepageEvent
-            view.appendChild(button)
+            button.onclick = function() {
+                return app.globalMethods.createWindowEvent(routerEvents.toHome)
+            }
 
-            return view
+            return [container, button]
         }
     }
 }
@@ -835,8 +867,8 @@ var router = createRouter(routes, app)
 
 // render landing page
 window.addEventListener("load", router.renderRoute)
-// register router change (custom event)
-window.addEventListener("router-change", router.renderRoute)
+// register router change
+window.addEventListener(router.eventNames.routeChange, router.renderRoute)
 // if navigation history is changed via back or forward buttons
 window.addEventListener("popstate", function() { 
     app.clearAllChildren()
@@ -844,9 +876,9 @@ window.addEventListener("popstate", function() {
 })
 
 // individual route builders
-window.addEventListener(routerEvents.toTimer, function() {
+window.addEventListener(router.eventNames.toTimer, function() {
     return router.pushToRoute("/timer")
 })
-window.addEventListener(routerEvents.toHome, function() {
+window.addEventListener(router.eventNames.toHome, function() {
     return router.pushToRoute("/")
 })
