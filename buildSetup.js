@@ -6,7 +6,7 @@ if (!fs.existsSync(targetDirectory)) {
     fs.mkdirSync(targetDirectory)
 }
 
-const targetFilesToCopy = [`index.html`, `timer.mp3`, `favicon.ico`]
+const targetFilesToCopy = [`timer.mp3`, `favicon.ico`]
 const copyFileToDestination = (filename) => {
     const targetDestination = targetDirectory + `/${filename}`
     return fs.copyFile(filename, targetDestination, (err) => {
