@@ -1,8 +1,12 @@
+/* 
+    the "dark-mode" class name is reserved class name for 
+    dark-mode features ONLY
+*/
+
+/* global styles */
 body {
-    /* off-white */
     background: #FCFCFC;
     font-size: 20px;
-    font-family: 'Bodoni Moda', sans-serif;
     font-family: 'Open Sans', sans-serif;
     padding-top: 70px !important;
     padding-bottom: 20px !important;
@@ -14,10 +18,160 @@ a {
     color: black;
 }
 
+button {
+    border: none;
+    outline: none;
+    border-radius: 0;
+}
+
+::-webkit-scrollbar {
+    width: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* text colors */
 a:hover {
     color: #F7B801;
 }
 
+.stop-audio-icon {
+    color: #1C7C54;
+}
+
+.not-found-icon {
+    color: #EF6F6C;
+}
+
+.footer-icon,
+.settings-icon {
+    color: #9381FF;
+}
+
+#app,
+.footer-span {
+    color: black;
+}
+
+.dark-mode-icon {
+    color: #FCFCFC;
+}
+
+/* 
+    DARK MODE
+    text colors 
+*/
+.footer-text.dark-mode,
+.settings-header.dark-mode,
+.not-found-text.dark-mode,
+.dark-mode-icon.dark-mode {
+    color: #FCFCFC;
+}
+
+.dark-mode-icon.dark-mode {
+    color: black;
+}
+
+/* background colors */
+::-webkit-scrollbar-thumb {
+    background: #555;
+}
+
+#app {
+    background: #FCFCFC;
+}
+
+.option-details-container,
+.countdown-timer-container.yellow, 
+.countdown-slice.yellow,
+.countdown-control-button.yellow,
+.back-to-home-button   {
+    background: #F7B801;
+}
+
+.stop-audio-popup-container,
+.to-timer-button,
+.countdown-timer-container,
+.countdown-control-button {
+    background: #98a8ae;
+}
+
+.stop-audio-button,
+.not-found-button,
+.interval-control-button.increment-interval,
+.session-indicator.finished,
+.countdown-timer-container.green, 
+.countdown-slice.green,
+.countdown-control-button.green  {
+    background: #1C7C54;
+}
+
+.option-title,
+.dark-mode-button {
+    background: #9381FF;
+}
+
+.decrement-interval,
+.session-indicator,
+.countdown-slice,
+.countdown-timer-container.red, 
+.countdown-slice.red,
+.countdown-control-button.red {
+    background: #EF6F6C;
+}
+
+/* 
+    DARK MODE
+    background colors 
+*/
+
+#app.dark-mode {
+    background: #262626;
+}
+
+
+/* box-shadows */
+.countdown-control-button,
+.back-to-home-button,
+.stop-audio-button,
+.dark-mode-button {
+    box-shadow: rgba(0, 0, 0, 0.12) 0px 1px 3px, rgba(0, 0, 0, 0.24) 0px 1px 2px;
+}
+
+/* opacity constants */
+.to-timer-button:hover,
+.option-title:hover,
+.interval-control-button:hover,
+.countdown-control-button:hover, 
+.back-to-home-button:hover,
+.dark-mode-button:hover {
+    opacity: 0.7;
+}
+
+/* margin-centering */
+.settings-header,
+.footer,
+.to-timer-button-container,
+.view-container,
+.options-selection-container,
+.countdown-timer-container,
+.countdown-controls-container,
+.back-to-home-button-container,
+.dark-mode-button-container,
+.dark-mode-button-container {
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* cursors */
+button,
+.option-title {
+    cursor: pointer;
+}
+
+/* rest of styles */
 #app {
     overflow: hidden;
     max-height: 0;
@@ -43,7 +197,6 @@ a:hover {
 }
 
 .stop-audio-popup-container {
-    background: #98a8ae;
     padding: 30px 30px 25px 30px;
     border-radius: 4px;
     font-weight: bold;
@@ -52,13 +205,10 @@ a:hover {
 
 .stop-audio-icon {
     font-size: 40px;
-    color: #1C7C54;
     margin-bottom: 20px;
 }
 
 .stop-audio-button {
-    box-shadow: rgba(0, 0, 0, 0.12) 0px 1px 3px, rgba(0, 0, 0, 0.24) 0px 1px 2px;
-    background: #1C7C54;
     padding-top: 7px;
     padding-bottom: 7px;
     margin-top: 20px;
@@ -79,15 +229,12 @@ a:hover {
 .footer {
     position: relative;
     width: 300px;
-    margin-left: auto;
-    margin-right: auto;
     margin-top: 40px;
     font-size: 16px;
     animation: gradually-become-visible 1.5s 1;
 }
 
 .not-found-icon {
-    color: #EF6F6C !important;
     font-size: 55px;
     margin-top: 30px;
 }
@@ -97,7 +244,6 @@ a:hover {
     padding-top: 10px;
     padding-bottom: 10px;
     margin-top: 30px;
-    background: #1C7C54;
     border-radius: 4px;
     box-shadow: rgba(50, 50, 93, 0.25) 0px 2px 5px -1px, rgba(0, 0, 0, 0.3) 0px 1px 3px -1px;
 }
@@ -105,27 +251,16 @@ a:hover {
 .footer-icon {
     position: relative;
     right: 7px;
-    color: #9381FF !important;
     font-size: 14px;
-}
-
-button {
-    border: none;
-    outline: none;
-    border-radius: 0;
-    cursor: pointer;
 }
 
 .settings-header {
     width: 300px;
-    margin-left: auto;
-    margin-right: auto;
     font-size: 25px;
     margin-bottom: 50px;
 }
 
 .settings-icon {
-    color: #9381FF;
     position: relative;
     right: 10px;
     font-size: 21px;
@@ -134,13 +269,10 @@ button {
 .to-timer-button-container {
     width: 160px;
     height: 160px;
-    margin-left: auto;
-    margin-right: auto;
     margin-bottom: 60px;
 }
 
 .to-timer-button {
-    background: #98a8ae;
     width: 100%;
     height: 100%;
     border-radius: 50%;
@@ -148,15 +280,9 @@ button {
     box-shadow: rgba(0, 0, 0, 0.15) 0px 3px 3px 0px;
 }
 
-.to-timer-button:hover {
-    opacity: 0.8;
-}
-
 .view-container {
     width: 90vw;
     max-width: 900px;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 .options-selection-container {
@@ -165,8 +291,6 @@ button {
     justify-content: center;
     align-items: flex-start;
     flex-wrap: wrap;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 .option-container {
@@ -195,16 +319,11 @@ button {
 }
 
 .option-title {
-    background: #9381FF;
     font-weight: bold;
-    cursor: pointer;
     border-bottom-left-radius: 4px;
     border-bottom-right-radius: 4px;
 }
 
-.option-title:hover {
-    opacity: 0.7;
-}
 
 .option-title.open-mode {
     border-bottom-left-radius: 0px !important;
@@ -212,7 +331,6 @@ button {
 }
 
 .option-details-container {
-    background: #F7B801;
     max-height: 0;
     overflow: hidden;
     transition: max-height 1s ease-in-out;
@@ -253,18 +371,12 @@ button {
     transform: translateY(6px);
 }
 
-.interval-control-button:hover {
-    opacity: 0.7;
-}
-
 .interval-control-button.increment-interval {
     margin-bottom: 35px;
-    background: #1C7C54;
 }
 
 .decrement-interval {
     margin-top: 35px;
-    background: #EF6F6C;
 }
 
 .sessions-indicator-container {
@@ -279,7 +391,6 @@ button {
 .session-indicator {
     width: 40px;
     height: 40px;
-    background: #EF6F6C;
     margin-left: 20px;
     margin-right: 20px;
     margin-bottom: 20px;
@@ -297,10 +408,6 @@ button {
     animation: blinking-background 3s infinite;
 }
 
-.session-indicator.finished {
-    background: #1C7C54;
-}
-
 .countdown-timer-container {
     width: 80vw;
     max-width: 450px;
@@ -308,9 +415,6 @@ button {
     height: 80vw;
     max-height: 450px;
     min-height: 300px;
-    background: #98a8ae;
-    margin-left: auto;
-    margin-right: auto;
     border-radius: 50%;
     box-shadow: rgba(0, 0, 0, 0.24) 0px 3px 8px;
     margin-bottom: 50px;
@@ -340,7 +444,6 @@ button {
 .countdown-slice {
     width: 200%;
     height: 100%;
-    background: #EF6F6C;
     border-radius: 50%;
 }
 
@@ -348,19 +451,6 @@ button {
     position: relative;
     right: 100%;
 }
-
-.countdown-timer-container.green, .countdown-slice.green {
-    background: #1C7C54;
-}
-
-.countdown-timer-container.red, .countdown-slice.red {
-    background: #EF6F6C;
-}
-
-.countdown-timer-container.yellow, .countdown-slice.yellow {
-    background: #F7B801;
-}
-
 
 .countdown-text-display {
     font-size: 70px;
@@ -383,8 +473,6 @@ button {
     display: flex;
     justify-content: center;
     margin-bottom: 50px;
-    margin-left: auto;
-    margin-right: auto;
 }
 
 .countdown-control-container {
@@ -399,56 +487,50 @@ button {
     height: 100%;
     border-radius: 50%;
     font-size: 27px;
-    background: #98a8ae;
-    box-shadow: rgba(0, 0, 0, 0.12) 0px 1px 3px, rgba(0, 0, 0, 0.24) 0px 1px 2px;
-}
-
-.countdown-control-button.green {
-    background: #1C7C54;
-}
-
-.countdown-control-button.red {
-    background: #EF6F6C;
-}
-
-.countdown-control-button.yellow {
-    background: #F7B801;
-}
-
-.countdown-control-button:hover, .back-to-home-button:hover {
-    opacity: 0.7;
 }
 
 .back-to-home-button-container {
     width: 100%;
     max-width: 450px;
-    margin-left: auto;
-    margin-right: auto;
     text-align: right;
     margin-bottom: 15px;
 }
 
 .back-to-home-button {
-    background: #F7B801;
     height: 45px;
     width: 45px;
     margin-right: 20px;
     font-size: 27px;
     border-radius: 4px;
-    box-shadow: rgba(0, 0, 0, 0.12) 0px 1px 3px, rgba(0, 0, 0, 0.24) 0px 1px 2px;
 }
 
 .hidden-icon {
     display: none;
 }
 
-@media screen and (max-width: 600px) {
+.dark-mode-button-container {
+    width: 62%;
+    text-align: right;
+    margin-bottom: 5px;
+}
 
+.dark-mode-button {
+    height: 40px;
+    width: 40px;
+    font-size: 25px;
+    border-radius: 4px;
+}
+
+/* mobile screen styles */
+@media screen and (max-width: 600px) {
+    
+    /* global styles */
     body {
         padding-top: 40px !important;
         padding-bottom: 15px !important;
     }
     
+    /* rest of styles */
     .options-selection-container {
         flex-direction: column;
         align-items: center;
@@ -465,5 +547,9 @@ button {
 
     .countdown-controls-container {
         margin-bottom: 25px;
+    }
+
+    .dark-mode-button-container {
+        width: 77%;
     }
 }

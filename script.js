@@ -16,7 +16,8 @@ function createApp() {
         breakSessionMinutes: 5,
         workSessionMinutes: 25,
         longBreakMinutes: 30,
-        sessionsUntilLongBreak: 4
+        sessionsUntilLongBreak: 4,
+        darkMode: false
     }
     var state = getCachedState() || defaultState
 
@@ -70,12 +71,13 @@ function createApp() {
             var footerContainer = createDOMElement("div", "footer")
             footerContainer.setAttribute("id", "footer")
 
-            var toSourceCodeLink = createDOMElement("a", "footer-text")
+            var textClass = state.darkMode ? " dark-mode" : ""
+            var toSourceCodeLink = createDOMElement("a", "footer-text" + textClass)
             toSourceCodeLink.setAttribute("href", "https://github.com/moomoolive/newPomodoroTimer")
             toSourceCodeLink.setAttribute("target", "_blank")
 
             var repositoryIcon = createIcon("fab fa-github-alt", "footer-icon")
-            var sourceLinkText = window.document.createElement("span")
+            var sourceLinkText = createDOMElement("span")
             sourceLinkText.innerText = "Source Code"
 
             toSourceCodeLink.appendChild(repositoryIcon)
@@ -86,7 +88,7 @@ function createApp() {
             window.document.body.appendChild(footerContainer)
         },
         getState(key) {
-            return state[key] || null
+            return state[key] !== undefined ? state[key] : null
         },
         incrementWorkSession() {
             return incrementState("workSessionMinutes")
@@ -128,8 +130,30 @@ function createApp() {
                 "You must have at least 2 work sessions"
             )
         },
+        toggleDarkMode() {
+            setState("darkMode", !state.darkMode)
+            // when dark mode is toggle whole app is reloaded
+            // as it's easier than creating two seperate workflows, one for 
+            // for setting colors on initial page render and
+            // one for once dark mode is mutated by user
+            var milliseconds = 400 
+            return window.setTimeout(function() {
+                return window.location.reload()
+            }, milliseconds)
+        },
         toggleFullPageAnimation() {
             return app.classList.toggle("animate-route")
+        },
+        setupColorScheme() {
+            if (!state.darkMode) {
+                return
+            }
+            var backgroundColor = "#262626"
+            var textColor = "#FCFCFC"
+            window.document.body.style.background = backgroundColor
+            window.document.body.style.color = textColor
+            return app.classList.toggle("dark-mode")
+
         },
         globalMethods: {
             createDOMElement: createDOMElement, 
@@ -138,7 +162,10 @@ function createApp() {
                 event.initEvent(eventName, true, true)
                 return window.dispatchEvent(event)
             },
-            createIcon: createIcon
+            createIcon: createIcon,
+            addDarkModeClass() {
+                return state.darkMode ? " dark-mode" : ""
+            },
         }
     }
 }
@@ -249,7 +276,7 @@ function homeRender(app, _, _, routerEvents) {
             return toTimerButtonContainer
         },
         createSettingsHeader: function(app) {
-            var settingsHeader = app.globalMethods.createDOMElement("div", "settings-header")
+            var settingsHeader = app.globalMethods.createDOMElement("div", "settings-header" + app.globalMethods.addDarkModeClass())
             var settingsText = window.document.createElement("span")
             settingsText.innerText = "Settings"
             var settingsIcon = app.globalMethods.createIcon("fas fa-sliders-h", "settings-icon")
@@ -305,9 +332,21 @@ function homeRender(app, _, _, routerEvents) {
             var icon = methods.createIncrementButtonIcon(isDecrementing)
             button.appendChild(icon)
             return button
+        },
+        createDarkModeButton(app) {
+            var container = app.globalMethods.createDOMElement("div", "dark-mode-button-container")
+            var darkModeButton = app.globalMethods.createDOMElement("button", "dark-mode-button")
+            darkModeButton.onclick = app.toggleDarkMode
+            var iconName = app.getState("darkMode") ? "moon" : "sun"
+            var darkModeIcon = app.globalMethods.createIcon("fas fa-" + iconName, "dark-mode-icon" + app.globalMethods.addDarkModeClass())
+            darkModeButton.appendChild(darkModeIcon)
+            container.appendChild(darkModeButton)
+            return container
         }
     }
+    console.log("Dark Mode", app.getState("darkMode"))
 
+    var darkModeButton = componentRenderFunctions.createDarkModeButton(app)
     var toTimerButtonContainer = componentRenderFunctions.createToTimerButton(app)
     var settingsHeader = componentRenderFunctions.createSettingsHeader(app)
     var optionsContainer = componentRenderFunctions.createOptionsContainer(app)
@@ -353,6 +392,7 @@ function homeRender(app, _, _, routerEvents) {
     }
 
     return [
+        darkModeButton,
         toTimerButtonContainer,
         settingsHeader,
         optionsContainer
@@ -644,9 +684,9 @@ function timerRender(app, view, createViewEvent, routerEvents) {
                     return baseName + suffix
                 },
                 recreateNextSessionButton(nextSessionButton, sessionIcons) {
-                    var color = this.nextSessionButtonColor()
+                    var backgroundColor = this.nextSessionButtonColor()
                     var iconName = this.nextSessionButtonIconName()
-                    nextSessionButton.className = "countdown-control-button " + color
+                    nextSessionButton.className = "countdown-control-button " + backgroundColor
                     for (var icon of sessionIcons) {
                         var isTargetIcon = icon.classList.contains(iconName)
                         if (isTargetIcon) {
@@ -833,6 +873,7 @@ function timerRender(app, view, createViewEvent, routerEvents) {
 
 // App setup
 var app = createApp()
+app.setupColorScheme()
 window.document.title = app.getTitle()
 app.renderFooter()
 
@@ -846,7 +887,8 @@ var routes = {
     // 404 not found
     "*": {
         render: function(app, view, _, routerEvents) {
-            view.innerText = "Page not found"
+            var textContainer = app.globalMethods.createDOMElement("div", "not-found-text" + app.globalMethods.addDarkModeClass())
+            textContainer.innerText = "Page Not Found"
             var icon = app.globalMethods.createIcon("fa fa-history", "not-found-icon")
             
             var container = window.document.createElement("div")
@@ -858,7 +900,11 @@ var routes = {
                 return app.globalMethods.createWindowEvent(routerEvents.toHome)
             }
 
-            return [container, button]
+            return [
+                textContainer, 
+                container, 
+                button
+            ]
         }
     }
 }
